@@ -1,0 +1,16 @@
+Your identification has been saved in "C:\Users\krisc\Desktop\Snow-bot\SSH.txt"
+Your public key has been saved in "C:\Users\krisc\Desktop\Snow-bot\SSH.txt".pub
+The key fingerprint is:
+SHA256:35onVMOhlVb0tASfomAiH2DKMipv34Fm/VTbhsOFlRQ kcandlert@gmail.com
+The key's randomart image is:
++---[RSA 4096]----+
+|     o      E*+..|
+|  . o .    .=.ooo|
+| o o . o o =oo +.|
+|. o   o + oo= .  |
+|o      .S oo..   |
+|..   o   +.*     |
+|  o + o ..* +    |
+| . + . +  .=.    |
+|    . . . oo     |
++----[SHA256]-----+
