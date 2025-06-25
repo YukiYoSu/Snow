@@ -8,17 +8,15 @@ from kraken import increase_threat, get_threat_level, decrease_threat, time_sinc
 import os
 import json
 import time
-from discord import app_commands
 
 # Bot setup
 intents = discord.Intents.default()
 intents.message_content = True
 bot = commands.Bot(command_prefix="!", intents=intents)
 
-ADMINS = [1351629934984040549, 1385968704558465024]  # Replace with your Discord user ID(s)
+ADMINS = [1351629934984040549, 1385968704558465024]
 DRUNK_USERS = {}  # user_id: expire_time
 
-# Configuration functions
 CONFIG_FILE = "pirate_config.json"
 
 def load_config():
@@ -61,60 +59,42 @@ def pirateify(text):
     endings = [" Arrr!", " *hic*", " Yo-ho-ho!", " 🍻", " Aye aye!"]
     return slurred + random.choice(endings)
 
-# Commands
-@bot.command(name="setpiratechannel")
-@commands.has_permissions(manage_guild=True)
-async def set_pirate_channel(ctx):
-    set_broadcast_channel(ctx.guild.id, ctx.channel.id)
-    await ctx.send(f"📻 Pirate Radio broadcasts will now appear in this channel.")
+# === COMMANDS ===
 
-@bot.tree.command(name="tavern", description="Drink grog and become temporarily drunk.")
-async def tavern(interaction: discord.Interaction):
-    user_id = interaction.user.id
+@bot.command(name="tavern")
+async def tavern(ctx):
+    user_id = ctx.author.id
     DRUNK_USERS[user_id] = time.time() + 120  # 2 minutes drunk
-    await interaction.response.send_message("🍻 You drink deeply from a mug of grog... you're feelin' it now, matey!")
+    await ctx.send("🍻 You drink deeply from a mug of grog... you're feelin' it now, matey!")
 
-@bot.tree.command(name="whirlpool", description="Encounter a mysterious whirlpool!")
-async def whirlpool_command(interaction: discord.Interaction):
+@bot.command(name="whirlpool")
+async def whirlpool_command(ctx):
     chance = random.randint(1, 8)
     if chance == 1:
         riddle = whirlpool_encounter()
-        await interaction.response.send_message(
+        await ctx.send(
             f"🌀 **Whirlpool Encounter!** You're caught in swirling seas!\n\nSolve this to escape:\n**{riddle['question']}**\n\nReply with your answer."
         )
 
         def check(m):
-            return m.author == interaction.user and m.channel == interaction.channel
+            return m.author == ctx.author and m.channel == ctx.channel
 
         try:
             msg = await bot.wait_for("message", check=check, timeout=30)
             if msg.content.lower().strip() == riddle["answer"]:
-                await interaction.followup.send("✅ You escape the whirlpool and find a treasure chest!")
+                await ctx.send("✅ You escape the whirlpool and find a treasure chest!")
             else:
-                await interaction.followup.send("❌ Wrong answer! You barely escape with your life.")
+                await ctx.send("❌ Wrong answer! You barely escape with your life.")
         except asyncio.TimeoutError:
-            await interaction.followup.send("⏳ You didn't answer in time. The whirlpool spits you out—drenched and dazed.")
+            await ctx.send("⏳ You didn't answer in time. The whirlpool spits you out—drenched and dazed.")
     else:
-        await interaction.response.send_message("🌊 You sail safely through calm waters.")
+        await ctx.send("🌊 You sail safely through calm waters.")
 
-@bot.tree.command(name="broadcast", description="Send a pirate radio broadcast to the server.")
-@app_commands.describe(message="Your broadcast message to all servers.")
-async def pirate_broadcast(interaction: discord.Interaction, message: str):
-    if interaction.user.id not in ADMINS:
-        await interaction.response.send_message("🛑 You are not authorized to use pirate radio.", ephemeral=True)
-        return
-
-    broadcast_msg = f"📡 **PIRATE RADIO BROADCAST** 📡\n🏴‍☠️ `{interaction.user.display_name}` shouts from the crow's nest:\n\n{message}"
-
-    sent = 0
-    for guild in bot.guilds:
-        try:
-            await send_pirate_broadcast(guild, broadcast_msg)
-            sent += 1
-        except:
-            continue
-
-    await interaction.response.send_message(f"📡 Broadcast sent to {sent} server(s).")
+@bot.command(name="setpiratechannel")
+@commands.has_permissions(manage_guild=True)
+async def set_pirate_channel(ctx):
+    set_broadcast_channel(ctx.guild.id, ctx.channel.id)
+    await ctx.send("📻 Pirate Radio broadcasts will now appear in this channel.")
 
 @bot.command(name="broadcast")
 async def broadcast(ctx, *, message: str):
@@ -123,7 +103,6 @@ async def broadcast(ctx, *, message: str):
         return
 
     broadcast_msg = f"📡 **PIRATE RADIO BROADCAST** 📡\n🏴‍☠️ `{ctx.author.display_name}` shouts from the crow's nest:\n\n{message}"
-
     sent = 0
     for guild in bot.guilds:
         try:
@@ -139,7 +118,7 @@ async def explore(ctx):
     island = generate_island()
     await ctx.send(island)
 
-# Background task
+# === BACKGROUND TASK ===
 async def kraken_decay_loop():
     await bot.wait_until_ready()
     print("Kraken decay loop started")
@@ -169,11 +148,10 @@ async def kraken_decay_loop():
 
         await asyncio.sleep(60)
 
-# Events
+# === EVENTS ===
 @bot.event
 async def on_ready():
     print(f"{bot.user} is ready!")
-    await bot.tree.sync()  # Ensure slash commands are registered
     bot.loop.create_task(kraken_decay_loop())
 
 @bot.event
@@ -183,12 +161,11 @@ async def on_message(message):
 
     user_id = message.author.id
     if user_id in DRUNK_USERS and DRUNK_USERS[user_id] > time.time():
-        print(f"{message.author.display_name} is drunk!")  # Debug line
         pirate_message = pirateify(message.content)
         await message.channel.send(f"🥴 {message.author.display_name} (drunk): {pirate_message}")
         return
     elif user_id in DRUNK_USERS:
-        del DRUNK_USERS[user_id]  # Expired
+        del DRUNK_USERS[user_id]
 
     triggered = increase_threat(2)
     if triggered:
@@ -200,6 +177,6 @@ async def on_message(message):
 
     await bot.process_commands(message)
 
-# Start the bot
+# === START ===
 keep_alive()
 bot.run(os.getenv("TOKEN"))
