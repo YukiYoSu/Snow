@@ -18,6 +18,7 @@ ADMINS = [1351629934984040549, 1385968704558465024]
 DRUNK_USERS = {}  # user_id: expire_time
 
 CONFIG_FILE = "pirate_config.json"
+PROGRESS_FILE = "progress.json"
 
 def load_config():
     try:
@@ -38,6 +39,17 @@ def set_broadcast_channel(guild_id, channel_id):
 def get_broadcast_channel(guild_id):
     config = load_config()
     return config.get(str(guild_id))
+
+def load_progress():
+    try:
+        with open(PROGRESS_FILE, "r") as f:
+            return json.load(f)
+    except FileNotFoundError:
+        return {}
+
+def save_progress(progress):
+    with open(PROGRESS_FILE, "w") as f:
+        json.dump(progress, f, indent=4)
 
 async def send_pirate_broadcast(guild, message):
     channel_id = get_broadcast_channel(guild.id)
@@ -115,8 +127,26 @@ async def broadcast(ctx, *, message: str):
 
 @bot.command(name="explore")
 async def explore(ctx):
+    user_id = str(ctx.author.id)
     island = generate_island()
-    await ctx.send(island)
+
+    progress = load_progress()
+    if user_id not in progress:
+        progress[user_id] = []
+
+    if island not in progress[user_id]:
+        progress[user_id].append(island)
+        save_progress(progress)
+        await ctx.send(f"🏝️ **New island discovered!**\n{island}")
+    else:
+        await ctx.send(f"🏝️ You revisit a familiar island:\n{island}")
+
+@bot.command(name="progress")
+async def progress(ctx):
+    user_id = str(ctx.author.id)
+    progress = load_progress()
+    discovered = len(progress.get(user_id, []))
+    await ctx.send(f"🗺️ You have discovered **{discovered}** unique island(s)!")
 
 # === BACKGROUND TASK ===
 async def kraken_decay_loop():
