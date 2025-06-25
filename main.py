@@ -50,18 +50,9 @@ async def send_pirate_broadcast(guild, message):
 
 def whirlpool_encounter():
     riddles = [
-        {
-            "question": "I have seas with no water, coasts with no sand, towns without people. What am I?",
-            "answer": "map"
-        },
-        {
-            "question": "What has a bottom at the top?",
-            "answer": "leg"
-        },
-        {
-            "question": "The more you take, the more you leave behind. What am I?",
-            "answer": "footsteps"
-        }
+        {"question": "I have seas with no water, coasts with no sand, towns without people. What am I?", "answer": "map"},
+        {"question": "What has a bottom at the top?", "answer": "leg"},
+        {"question": "The more you take, the more you leave behind. What am I?", "answer": "footsteps"}
     ]
     return random.choice(riddles)
 
@@ -157,7 +148,6 @@ async def kraken_decay_loop():
         print(f"[Kraken Monitor] Idle time: {idle_seconds:.2f}s | Threat: {get_threat_level()}")
 
         if idle_seconds >= 60:
-            # Find the first text channel the bot can send messages to
             channel = None
             for guild in bot.guilds:
                 for ch in guild.text_channels:
@@ -183,6 +173,7 @@ async def kraken_decay_loop():
 @bot.event
 async def on_ready():
     print(f"{bot.user} is ready!")
+    await bot.tree.sync()  # Ensure slash commands are registered
     bot.loop.create_task(kraken_decay_loop())
 
 @bot.event
@@ -192,11 +183,12 @@ async def on_message(message):
 
     user_id = message.author.id
     if user_id in DRUNK_USERS and DRUNK_USERS[user_id] > time.time():
+        print(f"{message.author.display_name} is drunk!")  # Debug line
         pirate_message = pirateify(message.content)
         await message.channel.send(f"🥴 {message.author.display_name} (drunk): {pirate_message}")
-        return  # don't process original message
+        return
     elif user_id in DRUNK_USERS:
-        del DRUNK_USERS[user_id]  # expired
+        del DRUNK_USERS[user_id]  # Expired
 
     triggered = increase_threat(2)
     if triggered:
