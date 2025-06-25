@@ -16,6 +16,7 @@ intents.message_content = True
 bot = commands.Bot(command_prefix="!", intents=intents)
 
 ADMINS = [1351629934984040549, 1385968704558465024]  # Replace with your Discord user ID(s)
+DRUNK_USERS = {}  # user_id: expire_time
 
 # Configuration functions
 CONFIG_FILE = "pirate_config.json"
@@ -64,12 +65,23 @@ def whirlpool_encounter():
     ]
     return random.choice(riddles)
 
+def pirateify(text):
+    slurred = text.replace("s", "sh").replace("r", "rr").replace("you", "ye").replace("my", "me")
+    endings = [" Arrr!", " *hic*", " Yo-ho-ho!", " 🍻", " Aye aye!"]
+    return slurred + random.choice(endings)
+
 # Commands
 @bot.command(name="setpiratechannel")
 @commands.has_permissions(manage_guild=True)
 async def set_pirate_channel(ctx):
     set_broadcast_channel(ctx.guild.id, ctx.channel.id)
     await ctx.send(f"📻 Pirate Radio broadcasts will now appear in this channel.")
+
+@bot.tree.command(name="tavern", description="Drink grog and become temporarily drunk.")
+async def tavern(interaction: discord.Interaction):
+    user_id = interaction.user.id
+    DRUNK_USERS[user_id] = time.time() + 120  # 2 minutes drunk
+    await interaction.response.send_message("🍻 You drink deeply from a mug of grog... you're feelin' it now, matey!")
 
 @bot.tree.command(name="whirlpool", description="Encounter a mysterious whirlpool!")
 async def whirlpool_command(interaction: discord.Interaction):
@@ -156,7 +168,6 @@ async def kraken_decay_loop():
                     break
 
             if channel:
-                # Fixed logic to check and message on sleep
                 previous = get_threat_level()
                 decrease_threat(5)
                 current = get_threat_level()
@@ -178,6 +189,14 @@ async def on_ready():
 async def on_message(message):
     if message.author.bot:
         return
+
+    user_id = message.author.id
+    if user_id in DRUNK_USERS and DRUNK_USERS[user_id] > time.time():
+        pirate_message = pirateify(message.content)
+        await message.channel.send(f"🥴 {message.author.display_name} (drunk): {pirate_message}")
+        return  # don't process original message
+    elif user_id in DRUNK_USERS:
+        del DRUNK_USERS[user_id]  # expired
 
     triggered = increase_threat(2)
     if triggered:
